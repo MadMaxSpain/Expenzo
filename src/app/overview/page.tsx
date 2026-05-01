@@ -34,7 +34,8 @@ function buildCategoryTotals(entries: Entry[]): CategoryTotal[] {
 
 function DonutChart({ totals, grand }: { totals: CategoryTotal[]; grand: number }) {
   if (grand === 0) return <div className="w-24 h-24 rounded-full bg-gray-100 flex-shrink-0" />
-  const r = 38; const circ = 2 * Math.PI * r
+  const r = 38
+  const circ = 2 * Math.PI * r
   let offset = circ * 0.25
   return (
     <svg width="96" height="96" viewBox="0 0 100 100" className="flex-shrink-0">
@@ -43,9 +44,16 @@ function DonutChart({ totals, grand }: { totals: CategoryTotal[]; grand: number 
         const pct = total / grand
         const dash = circ * pct - 2
         const el = (
-          <circle key={subcategory} cx="50" cy="50" r={r} fill="none" stroke={color}
-            strokeWidth="14" strokeDasharray={`${Math.max(dash, 0)} ${circ}`}
-            strokeDashoffset={-offset + circ * 0.25} strokeLinecap="round" />
+          <circle
+            key={subcategory}
+            cx="50" cy="50" r={r}
+            fill="none"
+            stroke={color}
+            strokeWidth="14"
+            strokeDasharray={`${Math.max(dash, 0)} ${circ}`}
+            strokeDashoffset={-offset + circ * 0.25}
+            strokeLinecap="round"
+          />
         )
         offset += circ * pct
         return el
@@ -53,7 +61,9 @@ function DonutChart({ totals, grand }: { totals: CategoryTotal[]; grand: number 
       <text x="50" y="46" textAnchor="middle" fontSize="10" fontWeight="600" fill="#1A1A18" fontFamily="DM Mono,monospace">
         {formatCurrency(grand)}
       </text>
-      <text x="50" y="58" textAnchor="middle" fontSize="8" fill="#888780" fontFamily="DM Sans,sans-serif">total</text>
+      <text x="50" y="58" textAnchor="middle" fontSize="8" fill="#888780" fontFamily="DM Sans,sans-serif">
+        total
+      </text>
     </svg>
   )
 }
@@ -80,8 +90,10 @@ function BarChart({ entries }: { entries: Entry[] }) {
         <div key={label} className="flex items-center gap-2">
           <span className="text-[12px] text-gray-400 w-12 text-right flex-shrink-0">{label}</span>
           <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-            <div className="h-full rounded-full transition-all duration-700"
-              style={{ width: `${(value / max) * 100}%`, background: color }} />
+            <div
+              className="h-full rounded-full transition-all duration-700"
+              style={{ width: `${(value / max) * 100}%`, background: color }}
+            />
           </div>
           <span className="text-[12px] font-mono text-gray-400 min-w-[52px]">
             {value > 0 ? formatCurrency(value) : '—'}
@@ -123,9 +135,12 @@ export default function OverviewPage() {
 
       <div className="flex gap-2 px-5 mt-4 overflow-x-auto no-scrollbar pb-1">
         {TIME_FILTERS.map(({ label, value }) => (
-          <button key={value} onClick={() => setTimeFilter(value)}
+          <button
+            key={value}
+            onClick={() => setTimeFilter(value)}
             className={`px-4 py-1.5 rounded-full text-[13px] font-medium border whitespace-nowrap transition-all flex-shrink-0
-              ${timeFilter === value ? 'bg-blue text-white border-blue' : 'bg-card text-gray-600 border-black/8'}`}>
+              ${timeFilter === value ? 'bg-blue text-white border-blue' : 'bg-card text-gray-600 border-black/8'}`}
+          >
             {label}
           </button>
         ))}
@@ -133,9 +148,12 @@ export default function OverviewPage() {
 
       <div className="mx-5 mt-4 bg-gray-100 rounded-xl p-[3px] flex">
         {(['combined', 'personal', 'business'] as ModeFilter[]).map(m => (
-          <button key={m} onClick={() => setModeFilter(m)}
+          <button
+            key={m}
+            onClick={() => setModeFilter(m)}
             className={`flex-1 py-2 rounded-[9px] text-[13px] font-medium capitalize transition-all
-              ${modeFilter === m ? 'bg-card text-ink shadow-sm' : 'text-gray-400'}`}>
+              ${modeFilter === m ? 'bg-card text-ink shadow-sm' : 'text-gray-400'}`}
+          >
             {m}
           </button>
         ))}
@@ -156,7 +174,7 @@ export default function OverviewPage() {
         </div>
         <div className="bg-card rounded-2xl border border-black/8 px-4 py-4">
           <p className="text-[11px] font-medium uppercase tracking-widest text-gray-400">Business</p>
-          <p className="text-[20px] font-semibold font-mono text-indigo-dark mt-1">{formatCurrency(business)}</p>
+          <p className="text-[20px] font-semibold font-mono text-[#3C3489] mt-1">{formatCurrency(business)}</p>
           <p className="text-[12px] text-gray-400 mt-0.5">{pctBusiness}%</p>
         </div>
       </div>
@@ -170,3 +188,50 @@ export default function OverviewPage() {
               {categoryTotals.slice(0, 5).map(({ subcategory, total: t, color }) => (
                 <div key={subcategory} className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
+                  <span className="text-[13px] text-gray-600 flex-1">{subcategory}</span>
+                  <span className="text-[13px] font-semibold font-mono text-ink">{formatCurrency(t)}</span>
+                  <span className="text-[11px] text-gray-400 min-w-[30px] text-right">
+                    {Math.round((t / total) * 100)}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {entries.length > 0 && (
+        <div className="mx-5 mt-4 bg-card rounded-2xl border border-black/8 p-5">
+          <h3 className="text-[14px] font-semibold text-ink mb-4">Trend this month</h3>
+          <BarChart entries={entries} />
+        </div>
+      )}
+
+      <div className="mx-5 mt-4">
+        <h3 className="text-[18px] font-semibold text-ink mb-3">All entries</h3>
+        {loading ? (
+          <div className="text-center py-10 text-gray-400 text-sm">Loading…</div>
+        ) : entries.length === 0 ? (
+          <div className="bg-card rounded-2xl border border-black/8 px-5 py-8 text-center">
+            <p className="text-[32px] mb-2">✦</p>
+            <p className="text-[14px] text-gray-400">No entries for this period</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {entries.map((entry, i) => (
+              <EntryCard
+                key={entry.id}
+                entry={entry}
+                animationIndex={i}
+                onDelete={(id) => setEntries(prev => prev.filter(e => e.id !== id))}
+                onEdit={(id, updated) => setEntries(prev => prev.map(e => e.id === id ? { ...e, ...updated } : e))}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <TabBar />
+    </main>
+  )
+}
