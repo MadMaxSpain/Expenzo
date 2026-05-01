@@ -47,16 +47,19 @@ export function EntryCard({ entry, animationIndex = 0, onDelete, onEdit }: Entry
   const { icon, bg } = getIcon(entry.subcategory)
   const isPersonal = entry.category === 'Personal'
 
-  // Swipe state
+  const ACTION_WIDTH = 144
+  const SWIPE_THRESHOLD = 50
+
   const [translateX, setTranslateX] = useState(0)
   const [swiped, setSwiped] = useState(false)
+  const [isAnimating, setIsAnimating] = useState(false)
+
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
-  const isDragging = useRef(false)
-  const SWIPE_THRESHOLD = 60
-  const ACTION_WIDTH = 144 // two buttons × 72px
+  const touchCurrentX = useRef(0)
+  const isHorizontal = useRef<boolean | null>(null)
+  const hasMoved = useRef(false)
 
-  // Edit popup state
   const [showEdit, setShowEdit] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [editAmount, setEditAmount] = useState(String(entry.amount))
@@ -66,41 +69,61 @@ export function EntryCard({ entry, animationIndex = 0, onDelete, onEdit }: Entry
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
-  // Touch handlers
+  function snapTo(x: number) {
+    setIsAnimating(true)
+    setTranslateX(x)
+    setSwiped(x < 0)
+    setTimeout(() => setIsAnimating(false), 300)
+  }
+
+  function closeSwipe() { snapTo(0) }
+
   function onTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0].clientX
     touchStartY.current = e.touches[0].clientY
-    isDragging.current = false
+    touchCurrentX.current = e.touches[0].clientX
+    isHorizontal.current = null
+    hasMoved.current = false
   }
 
   function onTouchMove(e: React.TouchEvent) {
     const dx = e.touches[0].clientX - touchStartX.current
     const dy = e.touches[0].clientY - touchStartY.current
+    touchCurrentX.current = e.touches[0].clientX
 
-    // Only hijack horizontal swipes
-    if (!isDragging.current && Math.abs(dy) > Math.abs(dx)) return
-    isDragging.current = true
+    // Determine scroll direction on first significant move
+    if (isHorizontal.current === null && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
+      isHorizontal.current = Math.abs(dx) > Math.abs(dy)
+    }
 
-    if (dx > 0 && !swiped) return // no right swipe
+    if (!isHorizontal.current) return
+
+    hasMoved.current = true
+    e.preventDefault()
+
     const base = swiped ? -ACTION_WIDTH : 0
-    const next = Math.max(-(ACTION_WIDTH + 20), Math.min(0, base + dx))
-    setTranslateX(next)
+    const raw = base + dx
+    const clamped = Math.max(-(ACTION_WIDTH + 10), Math.min(8, raw))
+    setTranslateX(clamped)
   }
 
   function onTouchEnd() {
-    if (!isDragging.current) return
-    if (translateX < -SWIPE_THRESHOLD) {
-      setTranslateX(-ACTION_WIDTH)
-      setSwiped(true)
+    if (!isHorizontal.current || !hasMoved.current) return
+    const dx = touchCurrentX.current - touchStartX.current
+
+    if (swiped) {
+      // already open — close if swiped right enough
+      dx > 30 ? snapTo(0) : snapTo(-ACTION_WIDTH)
     } else {
-      setTranslateX(0)
-      setSwiped(false)
+      // closed — open if swiped left enough
+      dx < -SWIPE_THRESHOLD ? snapTo(-ACTION_WIDTH) : snapTo(0)
     }
   }
 
-  function closeSwipe() {
-    setTranslateX(0)
-    setSwiped(false)
+  function handleCardClick() {
+    if (hasMoved.current) return  // was a swipe, not a tap
+    if (swiped) { closeSwipe(); return }
+    setShowEdit(true)
   }
 
   async function handleDelete() {
@@ -108,9 +131,7 @@ export function EntryCard({ entry, animationIndex = 0, onDelete, onEdit }: Entry
     try {
       await fetch(`/api/entries/${entry.id}`, { method: 'DELETE' })
       onDelete?.(entry.id)
-    } catch {
-      setDeleting(false)
-    }
+    } catch { setDeleting(false) }
   }
 
   async function handleSave() {
@@ -131,9 +152,7 @@ export function EntryCard({ entry, animationIndex = 0, onDelete, onEdit }: Entry
         onEdit?.(entry.id, data.entry)
         setShowEdit(false)
       }
-    } catch {} finally {
-      setSaving(false)
-    }
+    } catch {} finally { setSaving(false) }
   }
 
   return (
@@ -145,23 +164,29 @@ export function EntryCard({ entry, animationIndex = 0, onDelete, onEdit }: Entry
           style={{ background: 'rgba(0,0,0,0.45)' }}
           onClick={(e) => { if (e.target === e.currentTarget) setShowEdit(false) }}
         >
-          <div className="bg-white w-full max-w-lg rounded-t-3xl p-6 pb-10"
-            onClick={e => e.stopPropagation()}>
+          <div
+            className="bg-white w-full max-w-lg rounded-t-3xl p-6 pb-10"
+            onClick={e => e.stopPropagation()}
+          >
             <div className="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-5" />
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-[18px] font-semibold text-ink">Edit entry</h3>
-              <button onClick={() => setShowEdit(false)}
-                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 text-xl leading-none">
-                ×
-              </button>
+              <button
+                onClick={() => setShowEdit(false)}
+                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 text-xl leading-none"
+              >×</button>
             </div>
 
             <div className="mb-4">
               <label className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Amount</label>
               <div className="flex items-center gap-2 mt-1.5 bg-gray-50 rounded-xl px-4 py-3 border border-black/8">
                 <span className="text-gray-400 font-mono text-lg">€</span>
-                <input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)}
-                  className="flex-1 bg-transparent outline-none text-[20px] font-mono text-ink" />
+                <input
+                  type="number"
+                  value={editAmount}
+                  onChange={e => setEditAmount(e.target.value)}
+                  className="flex-1 bg-transparent outline-none text-[20px] font-mono text-ink"
+                />
               </div>
             </div>
 
@@ -169,14 +194,14 @@ export function EntryCard({ entry, animationIndex = 0, onDelete, onEdit }: Entry
               <label className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Type</label>
               <div className="flex gap-2 mt-1.5">
                 {CATEGORIES.map(cat => (
-                  <button key={cat}
+                  <button
+                    key={cat}
                     onClick={() => { setEditCategory(cat as 'Personal' | 'Business'); setEditSubcategory(SUBCATEGORIES[cat][0]) }}
                     className={`flex-1 py-2.5 rounded-xl text-[13px] font-medium border transition-all
                       ${editCategory === cat
                         ? cat === 'Personal' ? 'bg-blue text-white border-blue' : 'bg-[#534AB7] text-white border-[#534AB7]'
-                        : 'bg-gray-50 text-gray-400 border-black/8'}`}>
-                    {cat}
-                  </button>
+                        : 'bg-gray-50 text-gray-400 border-black/8'}`}
+                  >{cat}</button>
                 ))}
               </div>
             </div>
@@ -185,34 +210,39 @@ export function EntryCard({ entry, animationIndex = 0, onDelete, onEdit }: Entry
               <label className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Category</label>
               <div className="flex flex-wrap gap-2 mt-1.5">
                 {SUBCATEGORIES[editCategory].map(sub => (
-                  <button key={sub} onClick={() => setEditSubcategory(sub)}
+                  <button
+                    key={sub}
+                    onClick={() => setEditSubcategory(sub)}
                     className={`px-3 py-1.5 rounded-full text-[12px] font-medium border transition-all
                       ${editSubcategory === sub
                         ? 'bg-blue-light text-blue-dark border-blue'
-                        : 'bg-gray-50 text-gray-400 border-black/8'}`}>
-                    {sub}
-                  </button>
+                        : 'bg-gray-50 text-gray-400 border-black/8'}`}
+                  >{sub}</button>
                 ))}
               </div>
             </div>
 
             <div className="mb-6">
               <label className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Note</label>
-              <input type="text" value={editNote} onChange={e => setEditNote(e.target.value)}
+              <input
+                type="text"
+                value={editNote}
+                onChange={e => setEditNote(e.target.value)}
                 placeholder="Optional note"
-                className="w-full mt-1.5 bg-gray-50 rounded-xl px-4 py-3 border border-black/8 outline-none text-[14px] text-ink" />
+                className="w-full mt-1.5 bg-gray-50 rounded-xl px-4 py-3 border border-black/8 outline-none text-[14px] text-ink"
+              />
             </div>
 
             <div className="flex gap-3">
               <button
                 onClick={() => { setShowEdit(false); setShowDeleteConfirm(true) }}
-                className="px-4 py-3 rounded-xl border border-red-200 text-red-400 text-[13px] font-medium">
-                Delete
-              </button>
-              <button onClick={handleSave} disabled={saving}
-                className="flex-1 py-3 rounded-xl bg-blue text-white text-[14px] font-medium active:scale-[0.98] transition-transform">
-                {saving ? 'Saving…' : 'Save changes'}
-              </button>
+                className="px-4 py-3 rounded-xl border border-red-200 text-red-400 text-[13px] font-medium"
+              >Delete</button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex-1 py-3 rounded-xl bg-blue text-white text-[14px] font-medium active:scale-[0.98] transition-transform"
+              >{saving ? 'Saving…' : 'Save changes'}</button>
             </div>
           </div>
         </div>
@@ -220,48 +250,51 @@ export function EntryCard({ entry, animationIndex = 0, onDelete, onEdit }: Entry
 
       {/* Delete confirm */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-6"
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-6"
           style={{ background: 'rgba(0,0,0,0.45)' }}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowDeleteConfirm(false) }}>
+          onClick={(e) => { if (e.target === e.currentTarget) setShowDeleteConfirm(false) }}
+        >
           <div className="bg-white w-full max-w-sm rounded-2xl p-6">
             <h3 className="text-[16px] font-semibold text-ink mb-1">Delete entry?</h3>
             <p className="text-[13px] text-gray-400 mb-5">This can't be undone.</p>
             <div className="flex gap-3">
-              <button onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 py-3 rounded-xl border border-black/8 text-[13px] font-medium text-gray-600">
-                Cancel
-              </button>
-              <button onClick={handleDelete} disabled={deleting}
-                className="flex-1 py-3 rounded-xl bg-red-500 text-white text-[13px] font-medium">
-                {deleting ? 'Deleting…' : 'Delete'}
-              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 py-3 rounded-xl border border-black/8 text-[13px] font-medium text-gray-600"
+              >Cancel</button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 py-3 rounded-xl bg-red-500 text-white text-[13px] font-medium"
+              >{deleting ? 'Deleting…' : 'Delete'}</button>
             </div>
           </div>
         </div>
       )}
 
       {/* Swipe container */}
-      <div className="relative rounded-2xl overflow-hidden"
-        style={{ animationDelay: `${animationIndex * 40}ms` }}>
-
-        {/* Action buttons behind the card */}
+      <div
+        className="relative rounded-2xl overflow-hidden"
+        style={{ animationDelay: `${animationIndex * 40}ms` }}
+      >
+        {/* Action buttons */}
         <div className="absolute inset-y-0 right-0 flex" style={{ width: ACTION_WIDTH }}>
-          {/* Edit button */}
           <button
             onClick={() => { closeSwipe(); setShowEdit(true) }}
-            className="flex-1 flex flex-col items-center justify-center gap-1 transition-opacity"
-            style={{ background: '#378ADD' }}>
+            className="flex-1 flex flex-col items-center justify-center gap-1"
+            style={{ background: '#378ADD' }}
+          >
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
               <path d="M13 2.5L15.5 5L6 14.5H3.5V12L13 2.5Z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             <span className="text-white text-[11px] font-medium">Edit</span>
           </button>
-
-          {/* Delete button */}
           <button
             onClick={() => { closeSwipe(); setShowDeleteConfirm(true) }}
             className="flex-1 flex flex-col items-center justify-center gap-1"
-            style={{ background: '#FF3B30' }}>
+            style={{ background: '#FF3B30' }}
+          >
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
               <path d="M3 5H15M7 5V3H11V5M6 5V14C6 14.6 6.4 15 7 15H11C11.6 15 12 14.6 12 14V5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
@@ -269,26 +302,24 @@ export function EntryCard({ entry, animationIndex = 0, onDelete, onEdit }: Entry
           </button>
         </div>
 
-        {/* Card — slides left to reveal buttons */}
+        {/* Card */}
         <div
           className="relative bg-card border border-black/8 rounded-2xl px-4 py-[14px] flex items-center gap-3 entry-card"
           style={{
             transform: `translateX(${translateX}px)`,
-            transition: isDragging.current ? 'none' : 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1)',
+            transition: isAnimating ? 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1)' : 'none',
             willChange: 'transform',
+            touchAction: 'pan-y',
           }}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
-          onClick={() => {
-            if (swiped) { closeSwipe(); return }
-            setShowEdit(true)
-          }}
+          onClick={handleCardClick}
         >
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
-            style={{ background: bg }}>
-            {icon}
-          </div>
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
+            style={{ background: bg }}
+          >{icon}</div>
           <div className="flex-1 min-w-0">
             <div className="text-[15px] font-medium text-ink truncate">{entry.subcategory}</div>
             <div className="text-[12px] text-gray-400 mt-[1px]">
