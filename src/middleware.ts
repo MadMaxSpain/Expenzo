@@ -10,7 +10,7 @@ export async function middleware(request: NextRequest) {
     {
       cookies: {
         getAll() { return request.cookies.getAll() },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
@@ -26,7 +26,6 @@ export async function middleware(request: NextRequest) {
   const isAuthPage = request.nextUrl.pathname === '/login'
   const isCallback = request.nextUrl.pathname.startsWith('/auth')
 
-  // Never redirect during auth callback
   if (isCallback) return supabaseResponse
 
   if (!user && !isAuthPage) {
