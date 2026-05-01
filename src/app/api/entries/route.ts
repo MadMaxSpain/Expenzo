@@ -1,28 +1,47 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
-export async function POST(request: Request) {
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await request.json()
-  const { amount, category, subcategory, note, date } = body
+  const { id } = await params
 
-  if (!amount || !category || !subcategory) {
-    return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
-  }
+  const { error } = await supabase
+    .from('entries')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ success: true })
+}
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { id } = await params
+  const body = await request.json()
 
   const { data, error } = await supabase
     .from('entries')
-    .insert({
-      user_id: user.id,
-      amount: Number(amount),
-      category,
-      subcategory,
-      note: note || null,
-      date: date || new Date().toISOString().split('T')[0],
+    .update({
+      amount: body.amount,
+      category: body.category,
+      subcategory: body.subcategory,
+      note: body.note,
     })
+    .eq('id', id)
+    .eq('user_id', user.id)
     .select()
     .single()
 

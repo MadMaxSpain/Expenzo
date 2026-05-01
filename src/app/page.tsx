@@ -15,10 +15,8 @@ export default function LogPage() {
   const inputRef = useRef<HTMLInputElement>(null)
   const { visible, msg, showToast } = useToast()
 
-  // Focus input on mount
   useEffect(() => { inputRef.current?.focus() }, [])
 
-  // Load today's entries
   const loadEntries = useCallback(async () => {
     const res = await fetch('/api/entries/list?time=today&mode=combined')
     const data = await res.json()
@@ -33,11 +31,9 @@ export default function LogPage() {
     setParsed(parseInput(v))
   }
 
-  async function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key !== 'Enter' || !parsed || saving) return
-    e.preventDefault()
+  async function saveEntry() {
+    if (!parsed || saving) return
 
-    // Optimistic UI — add instantly
     const tempEntry: Entry = {
       id: `temp-${Date.now()}`,
       user_id: '',
@@ -54,7 +50,6 @@ export default function LogPage() {
     showToast('Entry saved')
     inputRef.current?.focus()
 
-    // Save to Supabase in background
     setSaving(true)
     try {
       const res = await fetch('/api/entries', {
@@ -69,15 +64,19 @@ export default function LogPage() {
         }),
       })
       const data = await res.json()
-      // Replace temp entry with real one
       if (data.entry) {
         setEntries(prev => prev.map(e => e.id === tempEntry.id ? data.entry : e))
       }
     } catch {
-      // Keep optimistic entry; will sync on next load
     } finally {
       setSaving(false)
     }
+  }
+
+  async function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    await saveEntry()
   }
 
   const totalToday = entries.reduce((sum, e) => sum + e.amount, 0)
@@ -86,7 +85,6 @@ export default function LogPage() {
     <main className="min-h-screen bg-surface max-w-lg mx-auto pb-24">
       <Toast show={visible} message={msg} />
 
-      {/* Header */}
       <div className="px-6 pt-14 pb-0">
         <div className="flex items-baseline justify-between">
           <h1 className="text-[32px] font-semibold tracking-tight text-ink">Add entry</h1>
@@ -99,7 +97,6 @@ export default function LogPage() {
         <p className="text-[14px] text-gray-400 mt-0.5">Type amount + description, hit enter</p>
       </div>
 
-      {/* Input zone */}
       <div className="mx-5 mt-5">
         <div className={`bg-card rounded-2xl border-[1.5px] transition-all duration-200
           ${parsed ? 'border-blue shadow-[0_0_0_4px_rgba(55,138,221,0.1)]' : 'border-black/8'}`}>
@@ -108,6 +105,8 @@ export default function LogPage() {
             <input
               ref={inputRef}
               type="text"
+              inputMode="text"
+              enterKeyHint="done"
               value={value}
               onChange={handleChange}
               onKeyDown={handleKeyDown}
@@ -116,6 +115,16 @@ export default function LogPage() {
               spellCheck={false}
               className="flex-1 border-none outline-none text-[18px] bg-transparent text-ink caret-blue placeholder-gray-200"
             />
+            {parsed && (
+              <button
+                onClick={saveEntry}
+                className="w-8 h-8 rounded-full bg-blue flex items-center justify-center flex-shrink-0"
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M2 7L6 11L12 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            )}
           </div>
 
           {parsed && <ParseChips parsed={parsed} />}
@@ -128,7 +137,6 @@ export default function LogPage() {
           </div>
         </div>
 
-        {/* Quick hints */}
         <div className="flex gap-2 mt-3 flex-wrap">
           {['50 rent', '120 fabric', '30 food', '200 ads'].map(hint => (
             <button
@@ -142,7 +150,6 @@ export default function LogPage() {
         </div>
       </div>
 
-      {/* Today's entries */}
       <div className="mt-6">
         <div className="flex items-center justify-between px-6 mb-3">
           <h2 className="text-[18px] font-semibold tracking-tight text-ink">Today</h2>
@@ -158,7 +165,13 @@ export default function LogPage() {
         ) : (
           <div className="mx-5 flex flex-col gap-2">
             {entries.map((entry, i) => (
-              <EntryCard key={entry.id} entry={entry} animationIndex={i} />
+              <EntryCard
+                key={entry.id}
+                entry={entry}
+                animationIndex={i}
+                onDelete={(id) => setEntries(prev => prev.filter(e => e.id !== id))}
+                onEdit={(id, updated) => setEntries(prev => prev.map(e => e.id === id ? { ...e, ...updated } : e))}
+              />
             ))}
           </div>
         )}
