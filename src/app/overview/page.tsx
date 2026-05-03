@@ -129,8 +129,12 @@ export default function OverviewPage() {
 
   return (
     <main className="min-h-screen bg-surface max-w-lg mx-auto pb-24">
-      <div className="px-6 pt-14 pb-0">
+      <div className="px-6 pt-14 pb-0 flex items-center justify-between">
         <h1 className="text-[32px] font-semibold tracking-tight text-ink">Overview</h1>
+        <a href="/categories"
+          className="text-[13px] text-blue font-medium bg-blue-light px-3 py-1.5 rounded-full">
+          Categories
+        </a>
       </div>
 
       <div className="flex gap-2 px-5 mt-4 overflow-x-auto no-scrollbar pb-1">

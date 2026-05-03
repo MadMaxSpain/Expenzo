@@ -101,3 +101,34 @@ export function getDateRange(filter: string): { start: string; end: string } {
 
   return { start: today, end: today }
 }
+export async function parseInputWithCustomCategories(
+  raw: string,
+  customCategories: { name: string; category: string; emoji: string }[]
+): Promise<ParsedEntry | null> {
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+
+  const match = trimmed.match(/^[€£$]?\s*(\d+(?:[.,]\d{1,2})?)\s+(.+)$/)
+  if (!match) return null
+
+  const amount = parseFloat(match[1].replace(',', '.'))
+  if (isNaN(amount) || amount <= 0) return null
+
+  const desc = match[2].trim()
+  const lower = desc.toLowerCase()
+
+  for (const cat of customCategories) {
+    if (lower.includes(cat.name.toLowerCase())) {
+      return {
+        amount,
+        category: cat.category as 'Personal' | 'Business',
+        subcategory: cat.name,
+        icon: cat.emoji,
+        iconBg: cat.category === 'Personal' ? '#E6F1FB' : '#EEEDFE',
+        note: desc,
+      }
+    }
+  }
+
+  return parseInput(raw)
+}

@@ -4,7 +4,7 @@ import { TabBar } from '@/components/TabBar'
 import { Toast, useToast } from '@/components/Toast'
 import { ParseChips } from '@/components/ParseChips'
 import { EntryCard } from '@/components/EntryCard'
-import { parseInput } from '@/lib/parser'
+import { parseInput, parseInputWithCustomCategories } from '@/lib/parser'
 import type { Entry, ParsedEntry } from '@/types'
 
 export default function LogPage() {
@@ -12,6 +12,7 @@ export default function LogPage() {
   const [parsed, setParsed] = useState<ParsedEntry | null>(null)
   const [entries, setEntries] = useState<Entry[]>([])
   const [saving, setSaving] = useState(false)
+  const [customCategories, setCustomCategories] = useState<{id:string; name:string; category:string; emoji:string}[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
   const { visible, msg, showToast } = useToast()
 
@@ -24,11 +25,21 @@ export default function LogPage() {
   }, [])
 
   useEffect(() => { loadEntries() }, [loadEntries])
+  useEffect(() => {
+  async function loadCustomCategories() {
+    const res = await fetch('/api/categories')
+    const data = await res.json()
+    if (data.categories) setCustomCategories(data.categories)
+  }
+  loadCustomCategories()
+}, [])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const v = e.target.value
     setValue(v)
-    setParsed(parseInput(v))
+    parseInputWithCustomCategories(v, customCategories).then((result) => {
+      setParsed(result)
+    })
   }
 
   async function saveEntry() {
@@ -141,7 +152,7 @@ export default function LogPage() {
           {['50 rent', '120 fabric', '30 food', '200 ads'].map(hint => (
             <button
               key={hint}
-              onClick={() => { setValue(hint); setParsed(parseInput(hint)); inputRef.current?.focus() }}
+              onClick={() => { setValue(hint); parseInputWithCustomCategories(hint, customCategories).then(setParsed); inputRef.current?.focus() }}
               className="text-[12px] text-gray-400 bg-card border border-black/6 rounded-full px-3 py-1 hover:border-blue hover:text-blue transition-all"
             >
               {hint}
