@@ -241,7 +241,7 @@ export function EntryCard({ entry, animationIndex = 0, onDelete, onEdit }: Entry
             </div>
 
             <div className="flex gap-3">
-              <button onClick={() => { setShowEdit(false); setShowDeleteConfirm(true) }}
+              <button onClick={() => { setShowEdit(false); handleDelete() }}
                 className="px-4 py-3 rounded-xl border border-red-200 text-red-400 text-[13px] font-medium">
                 Delete
               </button>
@@ -290,7 +290,7 @@ export function EntryCard({ entry, animationIndex = 0, onDelete, onEdit }: Entry
             <span className="text-white text-[11px] font-medium">Edit</span>
           </button>
           <button
-            onClick={() => { snap(0); setShowDeleteConfirm(true) }}
+            onClick={() => { snap(0); handleDelete() }}
             className="flex-1 flex flex-col items-center justify-center gap-1"
             style={{ background: '#FF3B30' }}>
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
