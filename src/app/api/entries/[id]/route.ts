@@ -1,44 +1,50 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
-export async function GET() {
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data, error } = await supabase
-    .from('custom_categories')
-    .select('*')
+  const { id } = await params
+
+  const { error } = await supabase
+    .from('entries')
+    .delete()
+    .eq('id', id)
     .eq('user_id', user.id)
-    .order('created_at', { ascending: true })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ categories: data })
+  return NextResponse.json({ success: true })
 }
 
-export async function POST(request: Request) {
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const { id } = await params
   const body = await request.json()
-  const { name, category, emoji } = body
-
-  if (!name || !category) {
-    return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
-  }
 
   const { data, error } = await supabase
-    .from('custom_categories')
-    .insert({
-      user_id: user.id,
-      name: name.trim(),
-      category,
-      emoji: emoji || '📌',
+    .from('entries')
+    .update({
+      amount: body.amount,
+      category: body.category,
+      subcategory: body.subcategory,
+      note: body.note,
     })
+    .eq('id', id)
+    .eq('user_id', user.id)
     .select()
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ category: data })
+  return NextResponse.json({ entry: data })
 }
