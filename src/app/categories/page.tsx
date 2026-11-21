@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { readCache, writeCache, fetchAndCache } from '@/lib/cache'
 import { TabBar } from '@/components/TabBar'
 
 const DEFAULT_CATEGORIES = [
@@ -41,9 +42,10 @@ export default function CategoriesPage() {
 
   useEffect(() => {
     async function load() {
-      const res = await fetch('/api/categories')
-      const data = await res.json()
-      if (data.categories) setCustomCategories(data.categories)
+      const cached = readCache<CustomCategory[]>('categories')
+      if (cached) { setCustomCategories(cached); setLoading(false) }
+      const fresh = await fetchAndCache<CustomCategory[]>('/api/categories', 'categories', 'categories')
+      if (fresh) setCustomCategories(fresh)
       setLoading(false)
     }
     load()
@@ -60,7 +62,7 @@ export default function CategoriesPage() {
       })
       const data = await res.json()
       if (data.category) {
-        setCustomCategories(prev => [...prev, data.category])
+        setCustomCategories(prev => { const next = [...prev, data.category]; writeCache('categories', next); return next })
         setNewName('')
         setNewEmoji('📌')
         setShowAdd(false)
@@ -71,7 +73,7 @@ export default function CategoriesPage() {
   async function handleDelete(id: string) {
     try {
       await fetch(`/api/categories/${id}`, { method: 'DELETE' })
-      setCustomCategories(prev => prev.filter(c => c.id !== id))
+      setCustomCategories(prev => { const next = prev.filter(c => c.id !== id); writeCache('categories', next); return next })
     } catch {}
   }
 

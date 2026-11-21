@@ -1,10 +1,12 @@
 'use client'
+import Link from 'next/link'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { TabBar } from '@/components/TabBar'
 import { Toast, useToast } from '@/components/Toast'
 import { ParseChips } from '@/components/ParseChips'
 import { EntryCard } from '@/components/EntryCard'
-import { parseInput, parseInputWithCustomCategories } from '@/lib/parser'
+import { parseInputWithCustomCategories } from '@/lib/parser'
+import { readCache, writeCache, fetchAndCache, entriesKey } from '@/lib/cache'
 import type { Entry, ParsedEntry } from '@/types'
 
 export default function LogPage() {
@@ -18,21 +20,39 @@ export default function LogPage() {
 
   useEffect(() => { inputRef.current?.focus() }, [])
 
+  const todayKey = entriesKey('today', 'combined')
+  const hydrated = useRef(false)
+
   const loadEntries = useCallback(async () => {
-    const res = await fetch('/api/entries/list?time=today&mode=combined')
-    const data = await res.json()
-    if (data.entries) setEntries(data.entries)
-  }, [])
+    // 1. Show what's saved on the phone straight away
+    const cached = readCache<Entry[]>(todayKey)
+    if (cached) setEntries(cached)
+    hydrated.current = true
+    // 2. Refresh from the server in the background
+    const fresh = await fetchAndCache<Entry[]>('/api/entries/list?time=today&mode=combined', 'entries', todayKey)
+    if (fresh) setEntries(fresh)
+  }, [todayKey])
 
   useEffect(() => { loadEntries() }, [loadEntries])
+
   useEffect(() => {
-  async function loadCustomCategories() {
-    const res = await fetch('/api/categories')
-    const data = await res.json()
-    if (data.categories) setCustomCategories(data.categories)
-  }
-  loadCustomCategories()
-}, [])
+    const cached = readCache<{id:string; name:string; category:string; emoji:string}[]>('categories')
+    if (cached) setCustomCategories(cached)
+    fetchAndCache<{id:string; name:string; category:string; emoji:string}[]>('/api/categories', 'categories', 'categories')
+      .then(fresh => { if (fresh) setCustomCategories(fresh) })
+
+    // Pre-load the Overview's default view so that tab opens instantly
+    const t = setTimeout(() => {
+      fetchAndCache('/api/entries/list?time=month&mode=combined', 'entries', entriesKey('month', 'combined'))
+    }, 800)
+    return () => clearTimeout(t)
+  }, [])
+
+  // Keep the phone's copy of today's list in sync with every add/edit/delete
+  useEffect(() => {
+    if (!hydrated.current || entries.some(e => e.id.startsWith('temp-'))) return
+    writeCache(todayKey, entries)
+  }, [entries, todayKey])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const v = e.target.value
@@ -164,7 +184,7 @@ export default function LogPage() {
       <div className="mt-6">
         <div className="flex items-center justify-between px-6 mb-3">
           <h2 className="text-[18px] font-semibold tracking-tight text-ink">Today</h2>
-          <a href="/overview" className="text-[13px] text-blue font-medium">See all →</a>
+          <Link href="/overview" className="text-[13px] text-blue font-medium">See all →</Link>
         </div>
 
         {entries.length === 0 ? (

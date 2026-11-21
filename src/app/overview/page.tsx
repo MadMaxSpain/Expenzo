@@ -1,8 +1,10 @@
 'use client'
+import Link from 'next/link'
 import { useState, useEffect, useCallback } from 'react'
 import { TabBar } from '@/components/TabBar'
 import { EntryCard } from '@/components/EntryCard'
 import { formatCurrency } from '@/lib/parser'
+import { readCache, writeCache, fetchAndCache, entriesKey } from '@/lib/cache'
 import type { Entry, TimeFilter, ModeFilter } from '@/types'
 
 const TIME_FILTERS: { label: string; value: TimeFilter }[] = [
@@ -111,10 +113,17 @@ export default function OverviewPage() {
   const [loading, setLoading] = useState(true)
 
   const loadEntries = useCallback(async () => {
-    setLoading(true)
-    const res = await fetch(`/api/entries/list?time=${timeFilter}&mode=${modeFilter}`)
-    const data = await res.json()
-    if (data.entries) setEntries(data.entries)
+    const key = entriesKey(timeFilter, modeFilter)
+    // Show the phone's copy instantly; only show "Loading…" if there isn't one
+    const cached = readCache<Entry[]>(key)
+    if (cached) {
+      setEntries(cached)
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
+    const fresh = await fetchAndCache<Entry[]>(`/api/entries/list?time=${timeFilter}&mode=${modeFilter}`, 'entries', key)
+    if (fresh) setEntries(fresh)
     setLoading(false)
   }, [timeFilter, modeFilter])
 
@@ -131,10 +140,10 @@ export default function OverviewPage() {
     <main className="min-h-screen bg-surface max-w-lg mx-auto pb-24">
       <div className="px-6 pt-14 pb-0 flex items-center justify-between">
         <h1 className="text-[32px] font-semibold tracking-tight text-ink">Overview</h1>
-        <a href="/categories"
+        <Link href="/categories"
           className="text-[13px] text-blue font-medium bg-blue-light px-3 py-1.5 rounded-full">
           Categories
-        </a>
+        </Link>
       </div>
 
       <div className="flex gap-2 px-5 mt-4 overflow-x-auto no-scrollbar pb-1">
@@ -227,8 +236,16 @@ export default function OverviewPage() {
                 key={entry.id}
                 entry={entry}
                 animationIndex={i}
-                onDelete={(id) => setEntries(prev => prev.filter(e => e.id !== id))}
-                onEdit={(id, updated) => setEntries(prev => prev.map(e => e.id === id ? { ...e, ...updated } : e))}
+                onDelete={(id) => setEntries(prev => {
+                  const next = prev.filter(e => e.id !== id)
+                  writeCache(entriesKey(timeFilter, modeFilter), next)
+                  return next
+                })}
+                onEdit={(id, updated) => setEntries(prev => {
+                  const next = prev.map(e => e.id === id ? { ...e, ...updated } : e)
+                  writeCache(entriesKey(timeFilter, modeFilter), next)
+                  return next
+                })}
               />
             ))}
           </div>
