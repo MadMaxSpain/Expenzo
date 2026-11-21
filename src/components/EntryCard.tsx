@@ -13,6 +13,7 @@ const ICON_MAP: Record<string, { icon: string; bg: string }> = {
   Salaries:  { icon: '💼', bg: '#EEEDFE' },
   Ads:       { icon: '📢', bg: '#FAEEDA' },
   Tools:     { icon: '🔧', bg: '#E1F5EE' },
+  Investment: { icon: '📈', bg: '#EAF3DE' },
   Misc:      { icon: '📌', bg: '#F1EFE8' },
 }
 
@@ -32,8 +33,8 @@ function timeAgo(dateStr: string): string {
 
 const CATEGORIES = ['Personal', 'Business']
 const SUBCATEGORIES: Record<string, string[]> = {
-  Personal: ['Rent', 'Food', 'Transport', 'Utilities', 'Leisure', 'Misc'],
-  Business: ['Salaries', 'Materials', 'Ads', 'Tools', 'Rent', 'Utilities', 'Misc'],
+  Personal: ['Rent', 'Food', 'Transport', 'Utilities', 'Leisure', 'Investment', 'Misc'],
+  Business: ['Salaries', 'Materials', 'Ads', 'Tools', 'Rent', 'Utilities', 'Investment', 'Misc'],
 }
 
 interface EntryCardProps {

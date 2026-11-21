@@ -9,6 +9,9 @@ interface CategoryRule {
 }
 
 const RULES: CategoryRule[] = [
+  // Investment (checked first: "business investment" → Business, any other investment → Personal)
+  { category: 'Business', subcategory: 'Investment', icon: '📈', iconBg: '#EAF3DE', keywords: ['business investment', 'inversión negocio', 'inversion negocio', 'inversión empresa', 'inversion empresa', 'inversión taller', 'inversion taller'] },
+  { category: 'Personal', subcategory: 'Investment', icon: '📈', iconBg: '#EAF3DE', keywords: ['investment', 'invest', 'inversión', 'inversion', 'stocks', 'acciones', 'crypto', 'bitcoin', 'etf'] },
   // Personal
   { category: 'Personal', subcategory: 'Rent',      icon: '🏠', iconBg: '#E6F1FB', keywords: ['rent', 'alquiler', 'lloguer', 'hipoteca', 'mortgage'] },
   { category: 'Personal', subcategory: 'Food',       icon: '🛒', iconBg: '#E1F5EE', keywords: ['food', 'grocery', 'groceries', 'supermarket', 'mercadona', 'lidl', 'aldi', 'carrefour', 'restaurant', 'lunch', 'dinner', 'breakfast', 'cafe', 'coffee', 'bread', 'comida', 'menjar'] },

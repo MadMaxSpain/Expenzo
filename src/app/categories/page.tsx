@@ -10,11 +10,13 @@ const DEFAULT_CATEGORIES = [
   { name: 'Transport', category: 'Personal', emoji: '🚗' },
   { name: 'Utilities', category: 'Personal', emoji: '⚡' },
   { name: 'Leisure',   category: 'Personal', emoji: '🎭' },
+  { name: 'Investment', category: 'Personal', emoji: '📈' },
   { name: 'Misc',      category: 'Personal', emoji: '📌' },
   { name: 'Salaries',  category: 'Business', emoji: '💼' },
   { name: 'Materials', category: 'Business', emoji: '🧵' },
   { name: 'Ads',       category: 'Business', emoji: '📢' },
   { name: 'Tools',     category: 'Business', emoji: '🔧' },
+  { name: 'Investment', category: 'Business', emoji: '📈' },
 ]
 
 const EMOJI_OPTIONS = [

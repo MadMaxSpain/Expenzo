@@ -27,7 +27,7 @@ const BUSINESS = '#534AB7'
 const CATEGORY_COLORS: Record<string, string> = {
   Rent: '#534AB7', Food: '#378ADD', Materials: '#1D9E75', Ads: '#D85A30',
   Salaries: '#BA7517', Transport: '#888780', Utilities: '#5F5E5A',
-  Leisure: '#D4537E', Tools: '#639922', Trash: '#E24B4A', Misc: '#B4B2A9',
+  Leisure: '#D4537E', Tools: '#639922', Trash: '#E24B4A', Misc: '#B4B2A9', Investment: '#3B6D11',
 }
 const EXTRA = ['#0F6E56', '#993556', '#185FA5', '#854F0B', '#7F77DD', '#3B6D11', '#993C1D', '#5DCAA5', '#ED93B1', '#85B7EB']
 

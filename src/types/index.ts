@@ -5,6 +5,7 @@ export type SubCategory =
   | 'Rent' | 'Utilities' | 'Food' | 'Leisure' | 'Transport' | 'Misc'
   // Business
   | 'Salaries' | 'Materials' | 'Tools' | 'Ads' | 'Custom'
+  | 'Investment'
 
 export interface Entry {
   id: string
