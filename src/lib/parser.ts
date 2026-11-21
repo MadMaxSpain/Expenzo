@@ -65,13 +65,13 @@ export function parseInput(raw: string): ParsedEntry | null {
   }
 }
 
+// 4.574,60 € style (Spanish format, always grouped, cents only when needed)
+const fmtWhole = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0 })
+const fmtCents = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(amount)
+  const rounded = Math.round(amount * 100) / 100
+  return Number.isInteger(rounded) ? fmtWhole.format(rounded) : fmtCents.format(rounded)
 }
 
 export function getDateRange(filter: string): { start: string; end: string } {

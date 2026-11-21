@@ -5,8 +5,9 @@ import { TabBar } from '@/components/TabBar'
 import { Toast, useToast } from '@/components/Toast'
 import { ParseChips } from '@/components/ParseChips'
 import { EntryCard } from '@/components/EntryCard'
-import { parseInputWithCustomCategories } from '@/lib/parser'
+import { parseInputWithCustomCategories, formatCurrency } from '@/lib/parser'
 import { readCache, writeCache, fetchAndCache, entriesKey } from '@/lib/cache'
+import { toISO, periodRange, rangeCacheKey } from '@/lib/period'
 import type { Entry, ParsedEntry } from '@/types'
 
 export default function LogPage() {
@@ -29,7 +30,8 @@ export default function LogPage() {
     if (cached) setEntries(cached)
     hydrated.current = true
     // 2. Refresh from the server in the background
-    const fresh = await fetchAndCache<Entry[]>('/api/entries/list?time=today&mode=combined', 'entries', todayKey)
+    const today = toISO(new Date())
+    const fresh = await fetchAndCache<Entry[]>(`/api/entries/list?from=${today}&to=${today}&mode=combined`, 'entries', todayKey)
     if (fresh) setEntries(fresh)
   }, [todayKey])
 
@@ -43,7 +45,8 @@ export default function LogPage() {
 
     // Pre-load the Overview's default view so that tab opens instantly
     const t = setTimeout(() => {
-      fetchAndCache('/api/entries/list?time=month&mode=combined', 'entries', entriesKey('month', 'combined'))
+      const { from, to } = periodRange({ kind: 'month', offset: 0 })
+      fetchAndCache(`/api/entries/list?from=${from}&to=${to}&mode=combined`, 'entries', rangeCacheKey(from, to, 'combined'))
     }, 800)
     return () => clearTimeout(t)
   }, [])
@@ -72,7 +75,7 @@ export default function LogPage() {
       category: parsed.category,
       subcategory: parsed.subcategory,
       note: parsed.note,
-      date: new Date().toISOString().split('T')[0],
+      date: toISO(new Date()),
       created_at: new Date().toISOString(),
     }
     setEntries(prev => [tempEntry, ...prev])
@@ -91,7 +94,7 @@ export default function LogPage() {
           category: parsed.category,
           subcategory: parsed.subcategory,
           note: parsed.note,
-          date: new Date().toISOString().split('T')[0],
+          date: toISO(new Date()),
         }),
       })
       const data = await res.json()
@@ -121,7 +124,7 @@ export default function LogPage() {
           <h1 className="text-[32px] font-semibold tracking-tight text-ink">Add entry</h1>
           {totalToday > 0 && (
             <span className="text-[13px] text-gray-400 font-mono">
-              €{totalToday % 1 === 0 ? totalToday : totalToday.toFixed(2)} today
+              {formatCurrency(totalToday)} today
             </span>
           )}
         </div>

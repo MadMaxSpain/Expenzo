@@ -11,7 +11,13 @@ export async function GET(request: Request) {
   const timeFilter = searchParams.get('time') || 'month'
   const modeFilter = searchParams.get('mode') || 'combined'
 
-  const { start, end } = getDateRange(timeFilter)
+  // Explicit from/to (YYYY-MM-DD) wins over the preset time filter
+  const isDate = (v: string | null) => !!v && /^\d{4}-\d{2}-\d{2}$/.test(v)
+  const fromParam = searchParams.get('from')
+  const toParam = searchParams.get('to')
+  const { start, end } = isDate(fromParam) && isDate(toParam)
+    ? { start: fromParam as string, end: toParam as string }
+    : getDateRange(timeFilter)
 
   let query = supabase
     .from('entries')
