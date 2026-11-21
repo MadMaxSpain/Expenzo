@@ -12,9 +12,13 @@ export function readCache<T>(key: string): T | null {
   }
 }
 
+// Fired whenever the user's categories change, so every screen updates its icons
+export const CATEGORIES_EVENT = 'expenzo:categories'
+
 export function writeCache<T>(key: string, value: T) {
   try {
     localStorage.setItem(PREFIX + key, JSON.stringify(value))
+    if (key === 'categories') window.dispatchEvent(new Event(CATEGORIES_EVENT))
   } catch {}
 }
 

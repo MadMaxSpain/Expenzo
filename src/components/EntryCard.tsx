@@ -2,9 +2,7 @@
 import { useState, useRef } from 'react'
 import type { Entry } from '@/types'
 import { formatCurrency } from '@/lib/parser'
-import { readCache, fetchAndCache } from '@/lib/cache'
-
-interface CustomCategory { id: string; name: string; category: string; emoji: string }
+import { useCustomCategories, findCustomCategory } from '@/lib/customCategories'
 
 const ICON_MAP: Record<string, { icon: string; bg: string }> = {
   Rent:      { icon: '🏠', bg: '#E6F1FB' },
@@ -20,7 +18,8 @@ const ICON_MAP: Record<string, { icon: string; bg: string }> = {
   Misc:      { icon: '📌', bg: '#F1EFE8' },
 }
 
-function getIcon(subcategory: string) {
+function getIcon(subcategory: string, custom?: { emoji: string; category: string }) {
+  if (custom) return { icon: custom.emoji, bg: custom.category === 'Business' ? '#EEEDFE' : '#E6F1FB' }
   return ICON_MAP[subcategory] || { icon: '📌', bg: '#F1EFE8' }
 }
 
@@ -48,7 +47,8 @@ interface EntryCardProps {
 }
 
 export function EntryCard({ entry, animationIndex = 0, onDelete, onEdit }: EntryCardProps) {
-  const { icon, bg } = getIcon(entry.subcategory)
+  const customCats = useCustomCategories()
+  const { icon, bg } = getIcon(entry.subcategory, ICON_MAP[entry.subcategory] ? undefined : findCustomCategory(customCats, entry.subcategory))
   const isPersonal = entry.category === 'Personal'
 
   const ACTION_WIDTH = 144
@@ -63,14 +63,7 @@ export function EntryCard({ entry, animationIndex = 0, onDelete, onEdit }: Entry
   const moved = useRef(false)
 
   const [showEdit, setShowEdit] = useState(false)
-  const [customCats, setCustomCats] = useState<CustomCategory[]>([])
-
-  // Open the edit popup with the user's own categories available too
   function openEdit() {
-    const cached = readCache<CustomCategory[]>('categories')
-    if (cached) setCustomCats(cached)
-    fetchAndCache<CustomCategory[]>('/api/categories', 'categories', 'categories')
-      .then(fresh => { if (fresh) setCustomCats(fresh) })
     setShowEdit(true)
   }
 
