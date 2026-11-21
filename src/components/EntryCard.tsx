@@ -2,6 +2,9 @@
 import { useState, useRef } from 'react'
 import type { Entry } from '@/types'
 import { formatCurrency } from '@/lib/parser'
+import { readCache, fetchAndCache } from '@/lib/cache'
+
+interface CustomCategory { id: string; name: string; category: string; emoji: string }
 
 const ICON_MAP: Record<string, { icon: string; bg: string }> = {
   Rent:      { icon: '🏠', bg: '#E6F1FB' },
@@ -60,6 +63,28 @@ export function EntryCard({ entry, animationIndex = 0, onDelete, onEdit }: Entry
   const moved = useRef(false)
 
   const [showEdit, setShowEdit] = useState(false)
+  const [customCats, setCustomCats] = useState<CustomCategory[]>([])
+
+  // Open the edit popup with the user's own categories available too
+  function openEdit() {
+    const cached = readCache<CustomCategory[]>('categories')
+    if (cached) setCustomCats(cached)
+    fetchAndCache<CustomCategory[]>('/api/categories', 'categories', 'categories')
+      .then(fresh => { if (fresh) setCustomCats(fresh) })
+    setShowEdit(true)
+  }
+
+  // Built-in categories first, then the user's own for that type (no duplicates)
+  function optionsFor(type: string): { name: string; emoji?: string }[] {
+    const list: { name: string; emoji?: string }[] = (SUBCATEGORIES[type] || []).map(name => ({ name }))
+    customCats
+      .filter(c => c.category === type && !list.some(o => o.name.toLowerCase() === c.name.toLowerCase()))
+      .forEach(c => list.push({ name: c.name, emoji: c.emoji }))
+    if (type === editCategory && editSubcategory && !list.some(o => o.name === editSubcategory)) {
+      list.push({ name: editSubcategory })
+    }
+    return list
+  }
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [editAmount, setEditAmount] = useState(String(entry.amount))
   const [editCategory, setEditCategory] = useState(entry.category)
@@ -145,7 +170,7 @@ export function EntryCard({ entry, animationIndex = 0, onDelete, onEdit }: Entry
   function handleClick() {
     if (moved.current) return
     if (open) { snap(0); return }
-    setShowEdit(true)
+    openEdit()
   }
 
   async function handleDelete() {
@@ -222,13 +247,13 @@ export function EntryCard({ entry, animationIndex = 0, onDelete, onEdit }: Entry
             <div className="mb-4">
               <label className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Category</label>
               <div className="flex flex-wrap gap-2 mt-1.5">
-                {SUBCATEGORIES[editCategory].map(sub => (
-                  <button key={sub} onClick={() => setEditSubcategory(sub)}
+                {optionsFor(editCategory).map(({ name, emoji }) => (
+                  <button key={name} onClick={() => setEditSubcategory(name)}
                     className={`px-3 py-1.5 rounded-full text-[12px] font-medium border transition-all
-                      ${editSubcategory === sub
+                      ${editSubcategory === name
                         ? 'bg-blue-light text-blue-dark border-blue'
                         : 'bg-gray-50 text-gray-400 border-black/8'}`}>
-                    {sub}
+                    {emoji ? `${emoji} ${name}` : name}
                   </button>
                 ))}
               </div>
@@ -282,7 +307,7 @@ export function EntryCard({ entry, animationIndex = 0, onDelete, onEdit }: Entry
         {/* Action buttons */}
         <div className="absolute inset-y-0 right-0 flex" style={{ width: ACTION_WIDTH }}>
           <button
-            onClick={() => { snap(0); setShowEdit(true) }}
+            onClick={() => { snap(0); openEdit() }}
             className="flex-1 flex flex-col items-center justify-center gap-1"
             style={{ background: '#378ADD' }}>
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
